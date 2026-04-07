@@ -33,11 +33,29 @@ def index():
 def serve_static(path):
     # Only allow safe static extensions to be served
     allowed_extensions = {'.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.svg'}
-    ext = os.path.splitext(path)[1]
+    ext = os.path.splitext(path)[1].lower()
     
+    # 1. Standard approach (if uploaded correctly)
     if ext in allowed_extensions or path.startswith('images/'):
+        if os.path.exists(path):
+            return send_from_directory('.', path)
+            
+    # 2. Resilient check: If image was accidentally uploaded to the root directory
+    if path.startswith('images/'):
+        filename = os.path.basename(path)
+        if os.path.exists(filename):
+            return send_from_directory('.', filename)
+            
+    # 3. Resilient check: If image folder was accidentally nested (images/images/...)
+    if path.startswith('images/'):
+        nested_path = os.path.join('images', path)
+        if os.path.exists(nested_path):
+            return send_from_directory('.', nested_path)
+            
+    # If all above fail, but the file exists locally (failsafe)
+    if os.path.exists(path):
         return send_from_directory('.', path)
-    
+        
     return "Not Found", 404
 
 @app.route('/api/join', methods=['POST'])
